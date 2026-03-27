@@ -2,16 +2,17 @@
 
 GitHub Actions Bill of Materials — scan all repos in an org for compromised actions.
 
-## Description
-
-ghbom is a CLI tool that scans all repositories in a GitHub organization for known compromised or vulnerable GitHub Actions. It uses [abom](https://github.com/chainguard-dev/abom) to detect malicious actions in workflow files.
+ghbom combines the power of [abom](https://github.com/JulietSecurity/abom) (GitHub Actions security analysis) with org-wide scanning into a single self-contained tool. No external dependencies for the scanning logic.
 
 ## Features
 
 - Scan all repos in a GitHub organization for compromised actions
+- Embedded abom engine — no external dependency required
+- Recursive resolution of composite actions and reusable workflows
+- Tool wrapper detection (finds actions that silently embed Trivy, Grype, Snyk, etc.)
 - Parallel scanning with configurable concurrency
 - Multiple output formats (text, JSON, SARIF)
-- Rate limit awareness
+- Rate limit awareness via `gh` CLI
 - Progress reporting
 
 ## Installation
@@ -19,13 +20,16 @@ ghbom is a CLI tool that scans all repositories in a GitHub organization for kno
 ### Homebrew
 
 ```bash
-brew tap wplatnick/tap
-brew install ghbom
+brew install wplatnick/tap/ghbom
 ```
 
-### Binary
+### Build from source
 
-Download the latest release for your platform from the releases page and install manually.
+```bash
+git clone https://github.com/Wrentastic/ghbom
+cd ghbom
+go install
+```
 
 ## Usage
 
@@ -58,29 +62,49 @@ ghbom --org my-org --skip-existing
 
 ## SARIF Integration
 
-ghbom can output results in SARIF format for integration with GitHub Code Scanning.
+ghbom outputs SARIF 2.1.0, uploadable to GitHub Security Dashboard:
 
 ```bash
 ghbom --org my-org --format sarif --output ghbom.sarif
+gh code-scanning upload --sarif-file ghbom.sarif --repo my-org/my-repo
 ```
 
-Upload to GitHub using the `gh code-search` or the Security tab in your repository settings.
+## What It Detects
+
+ghbom uses Juliet Security's advisory database to detect:
+
+- Known compromised actions (CVE-affected versions)
+- Actions that embed vulnerable tools transitively
+- Actions pulling from known-malicious sources
+
+Currently detects ABOM-2026-001 (CVE-2026-33634, the Trivy supply chain compromise) and similar patterns.
 
 ## How It Works
 
-1. Lists all repositories in the specified organization using `gh repo list`
-2. For each repository, checks if it has GitHub Actions workflows
-3. Shallow clones the repository to a temporary directory
-4. Runs `abom scan --check` to detect compromised actions
-5. Parses and formats the results
-6. Cleans up temporary clone directories
+1. Lists all repositories in the org using `gh repo list`
+2. For each repo with workflow files, shallow clones it
+3. Parses workflow YAML files and resolves all action references
+4. Recursively resolves composite actions and reusable workflows
+5. Checks each action against Juliet Security's advisory database
+6. Reports findings with file location, action version, and advisory ID
+7. Cleans up temporary clone directories
 
 ## Prerequisites
 
-- Go 1.21+
+- Go 1.26+
 - `gh` CLI authenticated (`gh auth login`)
 - `git`
-- `abom` (install from https://github.com/chainguard-dev/abom)
+
+## Architecture
+
+ghbom embeds abom's core packages directly:
+
+- `internal/abom/pkg/model` — Action and workflow data structures
+- `internal/abom/pkg/parser` — Workflow YAML parsing
+- `internal/abom/pkg/resolver` — Transitive action resolution
+- `internal/abom/pkg/advisory` — Juliet Security advisory database
+
+This means ghbom ships the complete scanning engine — no external binary required.
 
 ## License
 
