@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/wplatnick/ghbom/internal/github"
@@ -37,19 +38,23 @@ func ScanRepo(org, repo, cloneDir string, token string) ScanResult {
 		return result
 	}
 
-	// Ensure cleanup
-	defer os.RemoveAll(filepath.Join(cloneDir, org))
+	// Cleanup after scan (only the specific repo clone dir)
+	defer os.RemoveAll(clonePath)
 
 	// Run abom scan
 	cmd := exec.Command("abom", "scan", clonePath, "--check")
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		// abom may return non-zero even without findings; check output
-		if len(out) == 0 && err != nil {
-			result.Error = fmt.Errorf("abom scan failed: %w", err)
+		// abom exits 1 when no workflows found — distinguish from real errors
+		errStr := string(out)
+		isNoWorkflows := strings.Contains(errStr, "no such file or directory") &&
+			strings.Contains(errStr, ".github/workflows")
+		if !isNoWorkflows {
+			result.Error = fmt.Errorf("abom scan failed: %s", errStr)
 			result.HasError = true
 			return result
 		}
+		// Exit 1 with no workflows = not an error, just skip
 	}
 
 	result.Findings = github.ParseAbomOutput(string(out))
