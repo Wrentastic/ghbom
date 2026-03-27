@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wplatnick/ghbom/internal/abom/pkg/model"
+	"github.com/ghbom/ghbom/internal/abom/pkg/model"
 	"gopkg.in/yaml.v3"
 )
 

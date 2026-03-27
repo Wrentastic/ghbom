@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/wplatnick/ghbom/internal/scanner"
+	"github.com/ghbom/ghbom/internal/scanner"
 )
 
 // SARIFLocation represents a location in SARIF format.

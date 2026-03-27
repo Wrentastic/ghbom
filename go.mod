@@ -1,4 +1,4 @@
-module github.com/wplatnick/ghbom
+module github.com/ghbom/ghbom
 
 go 1.26.1
 

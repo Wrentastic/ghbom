@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wplatnick/ghbom/internal/abom/pkg/model"
+	"github.com/ghbom/ghbom/internal/abom/pkg/model"
 )
 
 const (

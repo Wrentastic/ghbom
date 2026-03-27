@@ -20,7 +20,7 @@ ghbom combines the power of [abom](https://github.com/JulietSecurity/abom) (GitH
 ### Homebrew
 
 ```bash
-brew install wplatnick/tap/ghbom
+brew install ghbom/tap/ghbom
 ```
 
 ### Build from source

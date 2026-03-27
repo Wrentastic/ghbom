@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wplatnick/ghbom/internal/scanner"
+	"github.com/ghbom/ghbom/internal/scanner"
 )
 
 // TextFormatter outputs results in human-readable text format.

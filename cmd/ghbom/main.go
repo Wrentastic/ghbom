@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/wplatnick/ghbom/internal/github"
-	"github.com/wplatnick/ghbom/internal/output"
-	"github.com/wplatnick/ghbom/internal/scanner"
+	"github.com/ghbom/ghbom/internal/github"
+	"github.com/ghbom/ghbom/internal/output"
+	"github.com/ghbom/ghbom/internal/scanner"
 )
 
 var (

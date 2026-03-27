@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wplatnick/ghbom/internal/abom/pkg/advisory"
-	"github.com/wplatnick/ghbom/internal/abom/pkg/model"
-	"github.com/wplatnick/ghbom/internal/abom/pkg/parser"
-	"github.com/wplatnick/ghbom/internal/abom/pkg/resolver"
-	"github.com/wplatnick/ghbom/internal/github"
+	"github.com/ghbom/ghbom/internal/abom/pkg/advisory"
+	"github.com/ghbom/ghbom/internal/abom/pkg/model"
+	"github.com/ghbom/ghbom/internal/abom/pkg/parser"
+	"github.com/ghbom/ghbom/internal/abom/pkg/resolver"
+	"github.com/ghbom/ghbom/internal/github"
 )
 
 // ScanResult holds the result of scanning a single repository.

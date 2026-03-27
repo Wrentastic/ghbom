@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/wplatnick/ghbom/internal/scanner"
+	"github.com/ghbom/ghbom/internal/scanner"
 )
 
 // JSONFinding represents a finding in JSON output format.

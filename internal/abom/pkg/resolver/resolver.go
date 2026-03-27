@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wplatnick/ghbom/internal/abom/pkg/model"
-	"github.com/wplatnick/ghbom/internal/abom/pkg/parser"
+	"github.com/ghbom/ghbom/internal/abom/pkg/model"
+	"github.com/ghbom/ghbom/internal/abom/pkg/parser"
 )
 
 // Options configures the resolver.
