@@ -3,23 +3,26 @@ package scanner
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/wplatnick/ghbom/internal/abom/pkg/advisory"
+	"github.com/wplatnick/ghbom/internal/abom/pkg/model"
+	"github.com/wplatnick/ghbom/internal/abom/pkg/parser"
+	"github.com/wplatnick/ghbom/internal/abom/pkg/resolver"
 	"github.com/wplatnick/ghbom/internal/github"
 )
 
 // ScanResult holds the result of scanning a single repository.
 type ScanResult struct {
 	Repo     string
-	Findings  []github.Finding
+	Findings []github.Finding
 	Error    error
 	HasError bool
 }
 
-// ScanRepo scans a single repository for compromised actions.
+// ScanRepo scans a single repository for compromised actions using the abom Go API.
 func ScanRepo(org, repo, cloneDir string, token string) ScanResult {
 	result := ScanResult{Repo: repo}
 
@@ -41,23 +44,79 @@ func ScanRepo(org, repo, cloneDir string, token string) ScanResult {
 	// Cleanup after scan (only the specific repo clone dir)
 	defer os.RemoveAll(clonePath)
 
-	// Run abom scan
-	cmd := exec.Command("abom", "scan", clonePath, "--check")
-	out, err := cmd.CombinedOutput()
+	// Parse workflows
+	workflows, err := parser.ParseWorkflowDir(clonePath)
 	if err != nil {
-		// abom exits 1 when no workflows found — distinguish from real errors
-		errStr := string(out)
-		isNoWorkflows := strings.Contains(errStr, "no such file or directory") &&
-			strings.Contains(errStr, ".github/workflows")
-		if !isNoWorkflows {
-			result.Error = fmt.Errorf("abom scan failed: %s", errStr)
-			result.HasError = true
+		errStr := err.Error()
+		// If the workflows directory doesn't exist, that's not an error —
+		// it just means no workflows to scan. Match the original abom behavior.
+		if strings.Contains(errStr, "no such file or directory") && strings.Contains(errStr, ".github/workflows") {
 			return result
 		}
-		// Exit 1 with no workflows = not an error, just skip
+		result.Error = fmt.Errorf("parsing workflows: %w", err)
+		result.HasError = true
+		return result
 	}
 
-	result.Findings = github.ParseAbomOutput(string(out))
+	if len(workflows) == 0 {
+		// No workflows — not an error, just skip
+		return result
+	}
+
+	// Create ABOM
+	abom := model.NewABOM(clonePath)
+	abom.Workflows = workflows
+
+	// Resolve transitive dependencies
+	res, err := resolver.New(resolver.Options{
+		MaxDepth:  10,
+		Token:     token,
+		NoNetwork: false,
+		Quiet:     true,
+		LocalRoot: clonePath,
+	})
+	if err != nil {
+		result.Error = fmt.Errorf("initializing resolver: %w", err)
+		result.HasError = true
+		return result
+	}
+
+	if err := res.ResolveWorkflows(workflows); err != nil {
+		result.Error = fmt.Errorf("resolving dependencies: %w", err)
+		result.HasError = true
+		return result
+	}
+
+	// Check advisories
+	db := advisory.NewDatabase(advisory.LoadOptions{
+		Offline: false,
+		NoCache: false,
+		Quiet:   true,
+		Token:   token,
+	})
+	db.CheckAll(abom)
+
+	// Collect actions
+	abom.CollectActions()
+
+	// Convert compromised actions to findings
+	for _, action := range abom.Actions {
+		if action.Compromised {
+			// Use the first "referenced by" as location context
+			loc := ".github/workflows"
+			if len(action.ReferencedBy) > 0 {
+				loc = action.ReferencedBy[0]
+			}
+			finding := github.Finding{
+				RuleID:   action.Advisory,
+				Level:    "error",
+				Message:  fmt.Sprintf("compromised action: %s", action.Raw),
+				Location: loc,
+			}
+			result.Findings = append(result.Findings, finding)
+		}
+	}
+
 	return result
 }
 
